@@ -18,11 +18,10 @@
                 android:theme="@style/Theme.BatteryWidget">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
-
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <receiver android:name=".BatteryWidgetReceiver" android:exported="true">
+        <receiver android:name=".BatteryWidget$BatteryWidgetReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
                 <action android:name="android.intent.action.BATTERY_CHANGED"/>

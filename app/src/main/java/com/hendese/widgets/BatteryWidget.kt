@@ -6,27 +6,24 @@ import android.content.Intent
 import android.os.BatteryManager
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.LocalSize
+import androidx.glance.*
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 object BatteryWidget : GlanceAppWidget() {
+    private val batteryPercentage = mutableStateOf(0)
+    override val sizeMode: SizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             Content(context = context)
@@ -40,11 +37,12 @@ object BatteryWidget : GlanceAppWidget() {
 
         val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        batteryPercentage.value = batteryLevel
 
         val progressBarBackgroundColor = Color.White
         val progressBarColor = when {
-            batteryLevel > 50 -> Color.Green
-            batteryLevel > 20 -> Color.Yellow
+            batteryPercentage.value > 50 -> Color.Green
+            batteryPercentage.value > 20 -> Color.Yellow
             else -> Color.Red
         }
 
@@ -58,9 +56,16 @@ object BatteryWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.Vertical.CenterVertically,
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally
         ) {
-            Text(
-                text = "Pil: $batteryLevel%",
-                style = TextStyle(fontWeight = FontWeight.Bold, color = ColorProvider(Color.White), fontSize = 30.sp)
+            Button(
+                text = "Pil: ${batteryPercentage.value}%",
+                modifier = GlanceModifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(backgroundColor = ColorProvider(Color.White.copy(alpha = 0.00f))),
+                style = TextStyle(fontWeight = FontWeight.Bold, color = ColorProvider(Color.White), fontSize = 30.sp),
+                onClick = {
+                    val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+                    val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                    batteryPercentage.value = batteryLevel
+                },
             )
             Spacer(modifier = GlanceModifier.height(4.dp))
             Box(
@@ -85,7 +90,7 @@ object BatteryWidget : GlanceAppWidget() {
                     ) {
                         Box(
                             modifier = GlanceModifier
-                                .width((LocalSize.current.width.value * batteryLevel / 100).dp) // Get current widgetSize here
+                                .width((LocalSize.current.width.value * batteryPercentage.value / 100).dp) // Get current widgetSize here
                                 .fillMaxHeight()
                                 .background(progressBarColor)
                         ) {}
@@ -94,24 +99,28 @@ object BatteryWidget : GlanceAppWidget() {
             }
         }
     }
-}
 
-class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget
-        get() = BatteryWidget
+    class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
+        override val glanceAppWidget: GlanceAppWidget
+            get() = BatteryWidget
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-
-        if (intent.action == Intent.ACTION_BATTERY_CHANGED) {
-            val coroutineScope = CoroutineScope(Dispatchers.Main.immediate)
-            coroutineScope.launch {
-                val glanceAppWidgetManager = GlanceAppWidgetManager(context)
-                val glanceIds = glanceAppWidgetManager.getGlanceIds(BatteryWidget::class.java)
-                glanceIds.forEach { glanceId ->
-                    BatteryWidget.update(context, glanceId)
+        override fun onReceive(context: Context, intent: Intent) {
+            super.onReceive(context, intent)
+            Log.d(
+                "BatteryWidgetReceiver",
+                "onReceive called with intent: " + intent.action + " ms: " + System.currentTimeMillis().toString()
+            )
+            /*if (intent.action == Intent.ACTION_BATTERY_CHANGED) {
+                Log.d("BatteryWidgetReceiver", "ACTION_BATTERY_CHANGED: " + intent.action + " ms: " + System.currentTimeMillis().toString())
+                val coroutineScope = CoroutineScope(Dispatchers.Main.immediate)
+                coroutineScope.launch {
+                    val glanceAppWidgetManager = GlanceAppWidgetManager(context)
+                    val glanceIds = glanceAppWidgetManager.getGlanceIds(BatteryWidget::class.java)
+                    glanceIds.forEach { glanceId ->
+                        BatteryWidget.update(context, glanceId)
+                    }
                 }
-            }
+            }*/
         }
     }
 }
